@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check Go formatting
+        run: test -z "$(gofmt -l cmd internal)"
+      - name: Vet backend
+        run: go vet ./cmd/... ./internal/...
+      - name: Test backend with race detector
+        run: go test -race -coverprofile=coverage.out ./cmd/... ./internal/...
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Audit frontend dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
+      - name: Check frontend
+        working-directory: frontend
+        run: npm run check
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run browser end-to-end tests
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Build backend image
+        run: docker build --tag calculator-api:test .
+      - name: Build frontend image
+        run: docker build --tag calculator-web:test frontend
+
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: calculator-api:test
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: calculator-web:test
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1

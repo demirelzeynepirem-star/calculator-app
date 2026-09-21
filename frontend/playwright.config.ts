@@ -1,0 +1,35 @@
+import { defineConfig, devices } from '@playwright/test'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const projectRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
+
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: true,
+  forbidOnly: Boolean(process.env.CI),
+  retries: process.env.CI ? 2 : 0,
+  reporter: process.env.CI ? 'github' : 'list',
+  use: {
+    baseURL: 'http://127.0.0.1:4173',
+    trace: 'on-first-retry',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  ],
+  webServer: [
+    {
+      command: 'go run ../cmd/server',
+      env: { GOCACHE: resolve(projectRoot, 'work/go-cache') },
+      url: 'http://127.0.0.1:8080/api/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+      url: 'http://127.0.0.1:4173',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
+})
