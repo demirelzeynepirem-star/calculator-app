@@ -1,0 +1,6 @@
+.git
+.gitignore
+frontend
+work
+*.md
+**/*_test.go
