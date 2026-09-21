@@ -13,6 +13,12 @@ import (
 	"calculator/internal/calculator"
 )
 
+const (
+	maxRequestBodyBytes = 4096
+	maxExpressionLength = 500
+	requestIDBytes      = 8
+)
+
 type calculateRequest struct {
 	Expression string `json:"expression"`
 }
@@ -54,11 +60,11 @@ func withRequestLogging(next http.Handler) http.Handler {
 }
 
 func newRequestID() string {
-	bytes := make([]byte, 8)
-	if _, err := rand.Read(bytes); err != nil {
+	randomBytes := make([]byte, requestIDBytes)
+	if _, err := rand.Read(randomBytes); err != nil {
 		return "unavailable"
 	}
-	return hex.EncodeToString(bytes)
+	return hex.EncodeToString(randomBytes)
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {
@@ -66,7 +72,7 @@ func health(w http.ResponseWriter, _ *http.Request) {
 }
 
 func calculate(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	var request calculateRequest
@@ -78,7 +84,7 @@ func calculate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Code: "invalid_request", Error: "request body must contain one JSON object"})
 		return
 	}
-	if len([]rune(request.Expression)) > 500 {
+	if len([]rune(request.Expression)) > maxExpressionLength {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Code: "expression_too_long", Error: "expression must be 500 characters or fewer"})
 		return
 	}

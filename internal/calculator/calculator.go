@@ -1,4 +1,4 @@
-// Package calculator evaluates small arithmetic expressions without executing code.
+// Package calculator solves simple math expressions without running them as code.
 package calculator
 
 import (
@@ -9,7 +9,7 @@ import (
 	"unicode"
 )
 
-// Error describes a user-correctable expression error.
+// Error describes a problem in an expression that the user can fix.
 type Error struct {
 	Position int
 	Message  string
@@ -19,8 +19,9 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s at position %d", e.Message, e.Position+1)
 }
 
-// Evaluate parses and evaluates an expression. Supported syntax is +, -, *, /,
-// ^, parentheses, sqrt(...), unary signs, and postfix percentages.
+// Evaluate reads a math expression and calculates its result.
+// It supports +, -, *, /, ^, brackets, sqrt(...), positive and negative numbers,
+// and % after a value to divide it by 100.
 func Evaluate(expression string) (float64, error) {
 	if strings.TrimSpace(expression) == "" {
 		return 0, &Error{Message: "expression is required"}
@@ -109,7 +110,7 @@ func (p *parser) parseUnary() (float64, error) {
 	return p.parsePower()
 }
 
-// Power is right-associative: 2^3^2 is 2^(3^2).
+// Calculate powers from right to left: 2^3^2 means 2^(3^2).
 func (p *parser) parsePower() (float64, error) {
 	left, err := p.parsePostfix()
 	if err != nil {

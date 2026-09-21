@@ -1,25 +1,275 @@
-:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17201d; background: #f3f0e9; font-synthesis: none; }
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at 18% 20%, #faf8f3 0, transparent 35%), #f3f0e9; }
-button, input { font: inherit; }
-.page-shell { min-height: 100vh; display: grid; place-items: center; padding: 3rem 1rem; }
-.calculator { width: min(100%, 470px); background: #17201d; color: #fff; padding: 1rem; border-radius: 26px; box-shadow: 0 28px 70px #1f292231; }
-.display { min-height: 190px; padding: 1.4rem 1.2rem; display: flex; flex-direction: column; justify-content: space-between; }
-.display label { display: block; font: .65rem ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .16em; color: #8f9b96; margin-bottom: .6rem; }
-.display input { width: 100%; border: 0; border-bottom: 1px solid #3a4541; background: none; color: #e9ece9; outline: none; font: 1.08rem ui-monospace, SFMono-Regular, Menlo, monospace; padding: .5rem 0 .8rem; }
-.display input:focus { border-color: #c76640; }
-.output { min-height: 55px; display: flex; justify-content: flex-end; align-items: flex-end; text-align: right; gap: .75rem; }
-.output strong { font: 500 clamp(2.3rem, 5vw, 3.5rem) ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: -.05em; }
-.equals-sign, .hint, .status { color: #8f9b96; font: .75rem ui-monospace, SFMono-Regular, Menlo, monospace; }
-.error { color: #ffad8e; font-size: .82rem; line-height: 1.4; }
-.keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: .55rem; }
-.keypad button { aspect-ratio: 1.24; border: 0; border-radius: 14px; background: #26312d; color: #f5f4ef; cursor: pointer; font: 500 1rem ui-monospace, SFMono-Regular, Menlo, monospace; transition: transform .12s, background .12s; }
-.keypad button:focus-visible { outline: 3px solid #ffad8e; outline-offset: 2px; }
-.keypad button:hover { background: #33413b; transform: translateY(-1px); }
-.keypad button:active { transform: translateY(1px); }
-.keypad .operator { color: #ffa27f; background: #302e29; }
-.keypad .utility { color: #aeb9b4; }
-.keypad .equals { grid-column: span 2; aspect-ratio: auto; background: #c45c35; color: #fff; }
-.keypad .equals:hover { background: #d66a42; }
-.keyboard-note { text-align: center; margin: 1rem 0 .2rem; color: #8f9b96; font: .62rem ui-monospace, SFMono-Regular, Menlo, monospace; }
-@media (max-width: 800px) { .page-shell { padding: 1rem; } }
+:root {
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  color: #382447;
+  background: #f7eef5;
+  font-synthesis: none;
+  --ink: #382447;
+  --muted: #705676;
+  --pink: #f3b8d3;
+  --lilac: #d9c5f0;
+  --purple: #67418c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(ellipse at 12% 35%, #f5d1e5 0, transparent 42%),
+    radial-gradient(ellipse at 90% 70%, #ded0f3 0, transparent 45%), #f7eef5;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.page-shell {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 38px 20px 24px;
+}
+
+.page-heading {
+  text-align: center;
+  margin-bottom: 26px;
+}
+.eyebrow {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+h1 {
+  font-size: clamp(29px, 5vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  margin: 12px 0 8px;
+}
+h1 em {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  color: #84549b;
+}
+.page-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.calculator {
+  width: min(100%, 390px);
+  padding: 20px;
+  border: 1px solid #b99dcc;
+  border-radius: 30px;
+  background: #e4d5f2;
+  box-shadow:
+    0 7px 0 #bba1d0,
+    0 22px 50px #76538825,
+    inset 0 2px 0 #ffffffb3;
+}
+
+.calculator-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 3px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+.brand-mark {
+  color: #925080;
+  font-size: 25px;
+  line-height: 1;
+}
+.edition {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.display {
+  min-height: 148px;
+  padding: 18px;
+  border: 1px solid #cab8cc;
+  border-radius: 17px;
+  background: #fff8fc;
+  box-shadow: inset 0 2px 5px #6347740c;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-bottom: 19px;
+}
+.display label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.display input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid #e6d5e3;
+  background: transparent;
+  color: var(--ink);
+  font:
+    16px ui-monospace,
+    monospace;
+  padding: 9px 0;
+  border-radius: 0;
+}
+.display input:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 3px;
+}
+.output {
+  min-height: 47px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  text-align: right;
+  padding-top: 8px;
+}
+.output strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font:
+    500 clamp(25px, 7vw, 37px) ui-monospace,
+    monospace;
+  letter-spacing: -0.055em;
+}
+.equals-sign {
+  color: #95649b;
+  font-size: 20px;
+}
+.hint,
+.status {
+  color: var(--muted);
+  font-size: 12px;
+}
+.error {
+  color: #9c2751;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.keypad button {
+  min-height: 48px;
+  height: 52px;
+  border: 1px solid #d1bedc;
+  border-radius: 13px;
+  background: #faf5fe;
+  color: var(--ink);
+  box-shadow: 0 3px 0 #bda6cf;
+  cursor: pointer;
+  font:
+    500 20px 'Avenir Next',
+    'Segoe UI',
+    sans-serif;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s,
+    background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.keypad button:focus-visible {
+  outline: 3px solid var(--purple);
+  outline-offset: 3px;
+}
+@media (hover: hover) {
+  .keypad button:hover {
+    background: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 #bda6cf;
+  }
+}
+.keypad button:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 #bda6cf;
+}
+.keypad .operator {
+  background: var(--pink);
+  border-color: #d79bb7;
+  box-shadow: 0 3px 0 #c58daa;
+  color: #65314e;
+}
+.keypad .utility {
+  background: #ccb6e6;
+  border-color: #baa0d5;
+}
+.keypad .equals {
+  grid-column: span 2;
+  background: var(--purple);
+  border-color: #573276;
+  color: white;
+  box-shadow: 0 3px 0 #45255f;
+  font-size: 27px;
+}
+.keypad .equals:hover {
+  background: #79539e;
+}
+.keyboard-note {
+  margin: 19px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+.page-footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 26px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.page-footer span {
+  color: #ab6996;
+  font-size: 20px;
+}
+
+@media (max-width: 420px) {
+  .page-shell {
+    padding: 24px 16px;
+  }
+  .page-heading {
+    margin-bottom: 20px;
+  }
+  .eyebrow {
+    font-size: 8px;
+  }
+  .calculator {
+    padding: 16px;
+    border-radius: 24px;
+  }
+  .keypad {
+    gap: 9px;
+  }
+  .keypad button {
+    height: 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .keypad button {
+    transition: none;
+  }
+}

@@ -1,142 +1,160 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react'
-import { calculate } from './api/calculatorApi'
+import { type FormEvent, type KeyboardEvent, useRef, useState } from 'react'
+import {
+  calculatorKeys,
+  type CalculatorKey,
+  MAX_EXPRESSION_LENGTH,
+  RESULT_DISPLAY_DIGITS,
+  resultToExpression,
+  repeatOperation,
+} from './calculator'
+import { useCalculation } from './hooks/useCalculation'
 import './styles.css'
-
-const keys = [
-  { label: 'C', value: 'clear', kind: 'utility' }, { label: '(', value: '(' }, { label: ')', value: ')' }, { label: '÷', value: ' / ', kind: 'operator' },
-  { label: '7', value: '7' }, { label: '8', value: '8' }, { label: '9', value: '9' }, { label: '×', value: ' * ', kind: 'operator' },
-  { label: '4', value: '4' }, { label: '5', value: '5' }, { label: '6', value: '6' }, { label: '−', value: ' - ', kind: 'operator' },
-  { label: '1', value: '1' }, { label: '2', value: '2' }, { label: '3', value: '3' }, { label: '+', value: ' + ', kind: 'operator' },
-  { label: '√', value: 'sqrt(' }, { label: '0', value: '0' }, { label: '.', value: '.' }, { label: '^', value: ' ^ ', kind: 'operator' },
-  { label: '%', value: '%' }, { label: '⌫', value: 'backspace', kind: 'utility' }, { label: '=', value: 'submit', kind: 'equals' },
-]
-
-interface PendingRequest {
-  id: number
-  controller: AbortController
-}
 
 export default function App() {
   const [expression, setExpression] = useState('3 + 5 * 2')
-  const [result, setResult] = useState<number | null>(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const pendingRequest = useRef<PendingRequest | null>(null)
-  const requestSequence = useRef(0)
-
-  useEffect(() => () => {
-    const pending = pendingRequest.current
-    pendingRequest.current = null
-    pending?.controller.abort()
-  }, [])
-
-  function cancelPendingRequest() {
-    pendingRequest.current?.controller.abort()
-    pendingRequest.current = null
-    requestSequence.current += 1
-    setLoading(false)
-  }
+  const repeatedOperation = useRef<string | null>(null)
+  const { result, error, isLoading, resetCalculation, submitCalculation } =
+    useCalculation()
 
   function updateExpression(nextExpression: string) {
-    cancelPendingRequest()
+    if (nextExpression.length > MAX_EXPRESSION_LENGTH) return
+    resetCalculation()
+    repeatedOperation.current = null
     setExpression(nextExpression)
-    setResult(null)
-    setError('')
   }
 
-  async function submit(event?: FormEvent) {
+  function handleSubmit(event?: FormEvent) {
     event?.preventDefault()
-    const submittedExpression = expression.trim()
-    if (!submittedExpression) {
-      setResult(null)
-      setError('Enter an expression to calculate')
-      return
-    }
-
-    pendingRequest.current?.controller.abort()
-    const request: PendingRequest = {
-      id: requestSequence.current + 1,
-      controller: new AbortController(),
-    }
-    requestSequence.current = request.id
-    pendingRequest.current = request
-    setLoading(true)
-    setError('')
-
-    try {
-      const calculation = await calculate(submittedExpression, request.controller.signal)
-      if (pendingRequest.current?.id === request.id) setResult(calculation.result)
-    } catch (caught) {
-      if (pendingRequest.current?.id !== request.id) return
-      if (caught instanceof DOMException && caught.name === 'AbortError') return
-      setResult(null)
-      setError(caught instanceof Error ? caught.message : 'Something went wrong')
-    } finally {
-      if (pendingRequest.current?.id === request.id) {
-        pendingRequest.current = null
-        setLoading(false)
-      }
+    if (isLoading) return
+    if (result !== null && repeatedOperation.current) {
+      const nextExpression = resultToExpression(result) + repeatedOperation.current
+      setExpression(nextExpression)
+      void submitCalculation(nextExpression)
+    } else {
+      repeatedOperation.current = repeatOperation(expression)
+      void submitCalculation(expression)
     }
   }
 
-  function replaceSelection(value: string) {
-    const input = inputRef.current
-    const start = input?.selectionStart ?? expression.length
-    const end = input?.selectionEnd ?? expression.length
-    const nextExpression = `${expression.slice(0, start)}${value}${expression.slice(end)}`
-    updateExpression(nextExpression)
+  function focusAt(position: number) {
     queueMicrotask(() => {
       inputRef.current?.focus()
-      inputRef.current?.setSelectionRange(start + value.length, start + value.length)
+      inputRef.current?.setSelectionRange(position, position)
     })
   }
 
-  function backspace() {
+  function insertAtCursor(keyValue: string) {
+    const input = inputRef.current
+    const start = input?.selectionStart ?? expression.length
+    const end = input?.selectionEnd ?? expression.length
+    updateExpression(
+      expression.slice(0, start) + keyValue + expression.slice(end),
+    )
+    focusAt(start + keyValue.length)
+  }
+
+  function deleteAtCursor() {
     const input = inputRef.current
     const start = input?.selectionStart ?? expression.length
     const end = input?.selectionEnd ?? expression.length
     if (start === 0 && end === 0) return
     const deleteFrom = start === end ? start - 1 : start
-    updateExpression(`${expression.slice(0, deleteFrom)}${expression.slice(end)}`)
-    queueMicrotask(() => {
-      inputRef.current?.focus()
-      inputRef.current?.setSelectionRange(deleteFrom, deleteFrom)
-    })
+    updateExpression(expression.slice(0, deleteFrom) + expression.slice(end))
+    focusAt(deleteFrom)
   }
 
-  function press(value: string) {
-    if (value === 'clear') updateExpression('')
-    else if (value === 'backspace') backspace()
-    else if (value === 'submit') void submit()
-    else replaceSelection(value)
+  function continueFromResult(operator: string) {
+    if (result === null) return
+    const nextExpression = resultToExpression(result) + operator
+    updateExpression(nextExpression)
+    focusAt(nextExpression.length)
+  }
+
+  function handleKeyPress(key: CalculatorKey) {
+    if (key.value === 'clear') updateExpression('')
+    else if (key.value === 'backspace') deleteAtCursor()
+    else if (key.value === 'submit') handleSubmit()
+    else if (key.kind === 'operator' && result !== null)
+      continueFromResult(key.value)
+    else insertAtCursor(key.value)
     inputRef.current?.focus()
   }
 
-  return <main className="page-shell">
-    <section className="calculator" aria-label="Expression calculator">
-      <div className="display">
-        <form onSubmit={submit}>
-          <label htmlFor="expression">Expression</label>
-          <input
-            ref={inputRef}
-            id="expression"
-            value={expression}
-            maxLength={500}
-            onChange={(event) => updateExpression(event.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            aria-describedby="expression-help"
-          />
-        </form>
-        <div className="output" aria-live="polite">
-          {loading ? <span className="status">Calculating…</span> : error ? <span className="error" role="alert">{error}</span> : result !== null ? <><span className="equals-sign">=</span><strong>{Number.isInteger(result) ? result : Number(result.toPrecision(12))}</strong></> : <span className="hint">Press = or Enter</span>}
+  function handleKeyboardInput(event: KeyboardEvent<HTMLInputElement>) {
+    if (result === null || event.ctrlKey || event.metaKey || event.altKey)
+      return
+    const operator = calculatorKeys.find(
+      (key) => key.kind === 'operator' && key.value.trim() === event.key,
+    )
+    if (operator) {
+      event.preventDefault()
+      continueFromResult(operator.value)
+    }
+  }
+
+  return (
+    <main className="page-shell">
+      <section className="calculator" aria-label="Calculator App">
+        <div className="calculator-heading">
+          <span className="brand-mark" aria-hidden="true">
+            ✳
+          </span>
+          <span>Calculator App</span>
         </div>
-      </div>
-      <div className="keypad">
-        {keys.map((key, index) => <button type="button" key={`${key.label}-${index}`} className={key.kind ?? ''} onClick={() => press(key.value)} aria-label={key.label === '⌫' ? 'Backspace' : key.label}>{key.label}</button>)}
-      </div>
-      <p id="expression-help" className="keyboard-note">Up to 500 characters · Enter to calculate</p>
-    </section>
-  </main>
+        <div className="display">
+          <form onSubmit={handleSubmit}>
+            <label htmlFor="expression">Expression</label>
+            <input
+              ref={inputRef}
+              id="expression"
+              value={expression}
+              maxLength={MAX_EXPRESSION_LENGTH}
+              onChange={(event) => updateExpression(event.target.value)}
+              onKeyDown={handleKeyboardInput}
+              autoComplete="off"
+              spellCheck={false}
+              aria-describedby="expression-help"
+            />
+          </form>
+          <div className="output" aria-live="polite">
+            {isLoading ? (
+              <span className="status">Calculating…</span>
+            ) : error ? (
+              <span className="error" role="alert">
+                {error}
+              </span>
+            ) : result !== null ? (
+              <>
+                <span className="equals-sign">=</span>
+                <strong>
+                  {Number.isInteger(result)
+                    ? result
+                    : Number(result.toPrecision(RESULT_DISPLAY_DIGITS))}
+                </strong>
+              </>
+            ) : (
+              <span className="hint">Press = or Enter</span>
+            )}
+          </div>
+        </div>
+        <div className="keypad">
+          {calculatorKeys.map((key) => (
+            <button
+              type="button"
+              key={key.value}
+              className={key.kind ?? ''}
+              onClick={() => handleKeyPress(key)}
+              aria-label={key.value === 'backspace' ? 'Backspace' : key.label}
+            >
+              {key.label}
+            </button>
+          ))}
+        </div>
+        <p id="expression-help" className="keyboard-note">
+          Up to {MAX_EXPRESSION_LENGTH} characters · Enter to calculate
+        </p>
+      </section>
+    </main>
+  )
 }
